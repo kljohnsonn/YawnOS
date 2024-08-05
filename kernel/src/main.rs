@@ -2,12 +2,17 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 use core::arch::asm;
-
+use core::char::from_u32;
+mod cpuid;
 mod interrupts;
+mod lapic;
+mod serial;
 mod tables;
-
+use cpuid::check_apic;
+use lapic::init_lapic;
 use limine::request::FramebufferRequest;
 use limine::BaseRevision;
+use serial::{Serial, PORT};
 use tables::gdt::load_gdt;
 use tables::idt::load_idt;
 
@@ -26,7 +31,11 @@ unsafe extern "C" fn _start() -> ! {
     assert!(BASE_REVISION.is_supported());
     load_gdt();
     load_idt();
-    asm!("int $0x00");
+    let port = PORT::new(0x3F8);
+    let serial = Serial::new(port).unwrap();
+    serial.write("We are so back!\n");
+    check_apic();
+    init_lapic();
     hcf();
 }
 
